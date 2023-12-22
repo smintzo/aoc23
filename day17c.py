@@ -53,8 +53,14 @@ class Location:
 plan = {} # (x, y): Location
 
 def pp():
-    for k, v in plan.items():
-        print(v.loc, v.min_score())
+    for y in range(height):
+        s = ''
+        for x in range(width):
+            node = plan[(x, y)]
+            best = reduce(min, node['bests'].values())
+            s += '{:<4}'.format(str(best))
+        print(s)
+
 
 def plan_finished():
     done = True
@@ -85,6 +91,8 @@ drns = [L, R, U, D]
 
 turn_dirs = {L: (U, D), R: (U, D), U: (L, R), D: (L, R)}
 
+opposite_dirs = {L: R, R: L, U: D, D: U}
+
 width = height = 0
 
 def v_add(a, b):
@@ -93,24 +101,56 @@ def v_add(a, b):
 def valid_loc(l):
     return 0 <= l[0] < width and 0 <= l[1] < height
 
-with open('C:\\Users\\smint\\Dropbox\\steve\\advent_of_code\\2023\\test17.txt') as f:
+with open('C:\\Users\\smint\\Dropbox\\steve\\advent_of_code\\2023\\input17.txt') as f:
     lines = f.readlines()
     width, height = len(lines[0].strip()), len(lines)
-    plan = {(x, y): {'score': int(lines[y][x])} for y in range(height) for x in range(width)}
+    plan = {(x, y): {'cost': int(lines[y][x]), 'bests': {}} for y in range(height) for x in range(width)}
 
-print(plan)
+plan[(width-1, height-1)]['bests']={(R, 0): 0, (D, 0): 0}
 
-plan[(width-1, height-1)]['bests']=[{'drn': R, 'steps': 0, 'loss': 0}, {'drn': D, 'steps': 0, 'loss': 0}]
+#print(plan)
 
-improvement_found = True
-while improvement_found:
-    improvement_found = False
+changed_locs = {(width-1, height-1)}
 
-    for y in range(height-1, -1, -1):
-        for x in range(width-1, -1, -1):
-            if x == width-1 and y == height-1:
-                for drn in drns:
-                    neighbour = v_add((x, y), drn)
-                    if neighbour not in plan:
-                        continue
-                    
+while changed_locs:
+    new_changed_locs = set()
+    for changed_loc in list(changed_locs):
+        changed = plan[changed_loc]
+        for drn in drns:
+            neighbour_loc = v_add(changed_loc, opposite_dirs[drn])
+            if neighbour_loc not in plan:               # might be off the edge ...
+                continue
+            neighbour = plan[neighbour_loc]
+            for best_key, best_score in plan[changed_loc]['bests'].items():
+                if best_key[0] == opposite_dirs[drn]: continue
+                if best_key[0] == drn:
+                    steps = best_key[1] + 1
+                    if steps <= 10:
+                        #print(changed['cost'])
+                        #print(best_score + changed['cost'])
+                        if (drn, steps) not in neighbour['bests'] or neighbour['bests'][(drn, steps)] > best_score + changed['cost']:
+                            neighbour['bests'][(drn, steps)] = best_score + changed['cost']
+                            new_changed_locs.add(neighbour_loc)
+                else:
+                    steps = best_key[1]
+                    if steps >= 4:
+                        if (drn, 1) not in neighbour['bests'] or neighbour['bests'][(drn, 1)] > best_score +changed['cost']:
+                            neighbour['bests'][(drn, 1)] = best_score + changed['cost']
+                            new_changed_locs.add(neighbour_loc)
+
+    changed_locs = new_changed_locs
+
+#print(plan[(0, 0)])
+
+best = -1
+for k, v in plan[(0, 0)]['bests'].items():
+    if k[1] >= 4:
+        if best < 0:
+            best = v
+        else:
+            best = min(best, v)
+print(best)
+
+#print(plan)
+
+#pp()
